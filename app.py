@@ -2,14 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import face_recognition
 import numpy as np
-import base64
 import cv2
-import pickle
 import os
+import base64
 
 app = FastAPI()
 
-# Allow frontend access
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,38 +16,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-ENCODINGS_FILE = "encodings.pkl"
+KNOWN_DIR = "dataset"
 
-# Load known encodings
-if os.path.exists(ENCODINGS_FILE):
-    with open(ENCODINGS_FILE, "rb") as f:
-        known_encodings = pickle.load(f)
-else:
-    known_encodings = []
+known_encodings = []
+known_names = []
 
-@app.post("/register")
-async def register(data: dict):
-    images = data["images"]
+# 🔥 Load dataset at startup
+for person_name in os.listdir(KNOWN_DIR):
+    person_path = os.path.join(KNOWN_DIR, person_name)
 
-    new_encodings = []
+    if not os.path.isdir(person_path):
+        continue
 
-    for img in images:
-        image_data = img.split(",")[1]
-        img_bytes = base64.b64decode(image_data)
+    for img_name in os.listdir(person_path):
+        img_path = os.path.join(person_path, img_name)
 
-        np_arr = np.frombuffer(img_bytes, np.uint8)
-        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        try:
+            image = face_recognition.load_image_file(img_path)
+            encodings = face_recognition.face_encodings(image)
 
-        encs = face_recognition.face_encodings(frame)
-        if encs:
-            new_encodings.append(encs[0])
+            if encodings:
+                known_encodings.append(encodings[0])
+                known_names.append(person_name)
 
-    known_encodings.extend(new_encodings)
+        except:
+            print(f"Error loading {img_path}")
 
-    with open(ENCODINGS_FILE, "wb") as f:
-        pickle.dump(known_encodings, f)
-
-    return {"status": "Registered", "count": len(new_encodings)}
+print(f"Loaded {len(known_encodings)} face encodings")
 
 
 @app.post("/detect")
@@ -71,8 +64,13 @@ async def detect(data: dict):
         return {"result": "UNKNOWN"}
 
     distances = face_recognition.face_distance(known_encodings, unknown)
+    min_dist = min(distances)
+    index = np.argmin(distances)
 
-    if min(distances) > 0.5:
-        return {"result": "UNKNOWN"}
+    if min_dist < 0.5:
+        return {
+            "result": "KNOWN",
+            "name": known_names[index]
+        }
     else:
-        return {"result": "KNOWN"}
+        return {"result": "UNKNOWN"}
