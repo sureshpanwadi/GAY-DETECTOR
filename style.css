@@ -1,0 +1,42 @@
+body {
+  background: #0f172a;
+  color: white;
+  text-align: center;
+  font-family: Arial;
+}
+
+video {
+  width: 400px;
+  border-radius: 20px;
+  margin: 20px;
+}
+
+.unknown {
+  color: red;
+  font-size: 40px;
+  animation: pop 0.3s ease-out;
+}
+
+.known {
+  color: #00ff99;
+  font-size: 40px;
+}
+
+@keyframes pop {
+  0% { transform: scale(0.6); }
+  100% { transform: scale(1.2); }
+}
+
+.sparkle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: yellow;
+  border-radius: 50%;
+  animation: fade 0.5s linear;
+}
+
+@keyframes fade {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
